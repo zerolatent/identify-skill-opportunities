@@ -1,0 +1,7 @@
+interface:
+  display_name: "Identify Skill Opportunities"
+  short_description: "Find reusable workflows worth turning into skills"
+  default_prompt: "Use $identify-skill-opportunities to review this project session for skill, script, automation, or documentation opportunities."
+
+policy:
+  allow_implicit_invocation: true
