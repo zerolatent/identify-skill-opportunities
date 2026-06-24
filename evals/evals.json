@@ -1,0 +1,644 @@
+{
+  "skill_name": "identify-skill-opportunities",
+  "version": 1,
+  "purpose": "Evaluate whether the skill identifies high-value reusable agent skill opportunities while avoiding noisy false positives.",
+  "global_assertions": {
+    "max_default_candidates": 2,
+    "must_ground_in_session_or_project_evidence": true,
+    "must_include_reuse_check_for_any_candidate": true,
+    "must_include_fitness_for_skill_like_candidates": true,
+    "must_include_family_for_skill_like_candidates": true,
+    "passive_mode_must_stay_silent_when_significance_gate_fails": true,
+    "passive_mode_must_stay_silent_when_no_high_confidence_candidate": true,
+    "magnitude_signals_must_not_replace_project_substance_or_reuse_signal": true,
+    "token_usage_alone_must_not_trigger_passive_review": true,
+    "explicit_mode_may_report_no_strong_candidates": true,
+    "must_not_recommend_skill_from_single_weak_signal": true,
+    "must_not_recommend_new_local_skill_when_script_automation_docs_or_existing_skill_fits_better": true,
+    "must_not_recommend_external_skill_based_on_popularity_alone": true
+  },
+  "classification_labels": [
+    "skill",
+    "skill update",
+    "external skill",
+    "script",
+    "automation",
+    "project docs",
+    "skip"
+  ],
+  "evals": [
+    {
+      "id": "passive-silent-high-token-no-reuse",
+      "category": "trigger-negative",
+      "prompt": "Passive wrap-up: decide whether to mention skill opportunities.",
+      "session_summary": "The user pasted a very long product brief and asked the agent to summarize it. The session used more than 30k tokens and took 15 minutes, but the agent did not inspect project files, run tools, edit artifacts, receive corrections, or discover a reusable workflow.",
+      "project_context": "No project-specific files or systems were used.",
+      "mode": "passive",
+      "metrics": {
+        "token_usage": 32000,
+        "elapsed_minutes": 15,
+        "meaningful_turns": 4,
+        "tool_calls": 0,
+        "project_files_touched": 0,
+        "project_commands": 0
+      },
+      "expected": {
+        "classification": "skip",
+        "candidate": "silent",
+        "max_candidates": 0,
+        "must_not_include": [
+          "Skill opportunity review",
+          "no strong candidates",
+          "skill opportunities"
+        ],
+        "false_positive_guard": "High token usage and elapsed time do not replace project substance or reuse evidence."
+      }
+    },
+    {
+      "id": "passive-silent-many-tools-no-reuse",
+      "category": "trigger-negative",
+      "prompt": "Passive wrap-up: decide whether to mention skill opportunities.",
+      "session_summary": "The agent used several tools to answer a one-off question about where a dependency is declared. It read four files and ran two search commands, then answered with the exact file path. There was no user correction, repeated failure, fragile sequence, hidden prerequisite, or reusable artifact.",
+      "project_context": "The repository is a standard package-based app. Dependency location is conventional and already documented.",
+      "mode": "passive",
+      "metrics": {
+        "token_usage": 9000,
+        "elapsed_minutes": 8,
+        "meaningful_turns": 3,
+        "tool_calls": 5,
+        "project_files_touched": 4,
+        "project_commands": 2
+      },
+      "expected": {
+        "classification": "skip",
+        "candidate": "silent",
+        "max_candidates": 0,
+        "must_not_include": [
+          "Skill opportunity review",
+          "no strong candidates",
+          "skill opportunities"
+        ],
+        "false_positive_guard": "Many tools/files can make a session large, but passive review still requires a reuse signal."
+      }
+    },
+    {
+      "id": "passive-trigger-recovered-fragile-workflow",
+      "category": "trigger-positive",
+      "prompt": "Passive wrap-up: decide whether to mention skill opportunities.",
+      "session_summary": "The agent tried a project build, hit an unavailable Xcode version from user-specific config, recovered by inspecting installed Xcode versions and passing an explicit override, then verified a device artifact. The user corrected that the artifact must work on a physical device, so the agent checked signing identity, architecture, embedded profile, entitlements, and device UDID eligibility.",
+      "project_context": "The repo uses Bazel, companion app build scripts, local signing profiles, and device-install validation.",
+      "mode": "passive",
+      "metrics": {
+        "token_usage": 24000,
+        "elapsed_minutes": 28,
+        "meaningful_turns": 8,
+        "tool_calls": 12,
+        "project_files_touched": 5,
+        "project_commands": 6,
+        "failed_attempt_recovered": true,
+        "user_correction": true
+      },
+      "expected": {
+        "classification": "skill",
+        "family": "CI/CD and deployment",
+        "candidate": "mobile-build-and-device-install-workflow",
+        "max_candidates": 1,
+        "must_include": [
+          "Reuse check",
+          "Fitness",
+          "Xcode",
+          "signing",
+          "device"
+        ],
+        "false_positive_guard": "This passes because it has project substance, reuse signals, and high-weight recovery/correction signals; not because of token count alone."
+      }
+    },
+    {
+      "id": "passive-silent-trivial-session",
+      "category": "trigger-negative",
+      "prompt": "Passive wrap-up: decide whether to mention skill opportunities.",
+      "session_summary": "The user asked `pwd`, then asked a short factual question about the current date. The agent answered both without reading project files, editing files, running tests, or using project-specific context.",
+      "project_context": "A project workspace is open, but the session did not use it.",
+      "mode": "passive",
+      "expected": {
+        "classification": "skip",
+        "candidate": "silent",
+        "max_candidates": 0,
+        "must_not_include": [
+          "Skill opportunity review",
+          "no strong candidates",
+          "skill opportunities"
+        ],
+        "false_positive_guard": "Passive wrap-up must not mention this skill when the significance gate fails."
+      }
+    },
+    {
+      "id": "passive-silent-significant-no-reuse",
+      "category": "trigger-negative",
+      "prompt": "Passive wrap-up: decide whether to mention skill opportunities.",
+      "session_summary": "The agent fixed one straightforward typo in a README, ran markdown formatting, and reported the diff. No user correction, repeated workflow, fragile order, hidden prerequisite, project-specific convention, or reusable artifact appeared.",
+      "project_context": "The repo has normal docs and standard formatting.",
+      "mode": "passive",
+      "expected": {
+        "classification": "skip",
+        "candidate": "silent",
+        "max_candidates": 0,
+        "must_not_include": [
+          "Skill opportunity review",
+          "no strong candidates",
+          "skill opportunities"
+        ],
+        "false_positive_guard": "Project substance alone is insufficient; passive review also requires a reuse signal."
+      }
+    },
+    {
+      "id": "explicit-no-candidate-message",
+      "category": "trigger-explicit",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user explicitly asked for a skill-opportunity review after a small one-off bug fix. The agent changed one line and ran one focused test. No recurrence, hidden project convention, or reusable workflow appeared.",
+      "project_context": "No relevant existing skills, scripts, or docs gaps were found.",
+      "mode": "explicit",
+      "expected": {
+        "classification": "skip",
+        "candidate": "no-strong-candidate",
+        "max_candidates": 0,
+        "must_include": [
+          "no strong candidates"
+        ],
+        "false_positive_guard": "Explicit mode may report no candidates; passive mode should stay silent."
+      }
+    },
+    {
+      "id": "skip-one-off-bugfix",
+      "category": "negative",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user asked the agent to fix one failing unit test caused by an off-by-one bug. The agent inspected one file, patched the loop boundary, ran the focused test once, and reported success. The user did not correct the agent, no project-specific workflow was rediscovered, and no repeated command or pattern appeared.",
+      "project_context": "The project has normal package scripts for testing and linting documented in README.",
+      "expected": {
+        "classification": "skip",
+        "candidate": "no-strong-candidate",
+        "max_candidates": 0,
+        "must_not_classify_as": [
+          "skill",
+          "skill update",
+          "external skill",
+          "script",
+          "automation",
+          "project docs"
+        ],
+        "must_include": [
+          "no strong candidates"
+        ],
+        "false_positive_guard": "A normal bug fix plus a test run is not enough evidence for a reusable skill."
+      }
+    },
+    {
+      "id": "automation-git-sync-periodic",
+      "category": "negative-for-skill",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user said they repeatedly want their branch checked against origin/main every four hours. The desired behavior is to fetch, detect whether the branch is stale, and notify them. No conflict resolution, validation policy, dirty-worktree handling, or project-specific branch convention was discussed.",
+      "project_context": "The repo is a standard git project with origin/main. There are no local git workflow docs.",
+      "expected": {
+        "classification": "automation",
+        "candidate": "branch-staleness-check",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "Reuse check",
+          "Fitness",
+          "every four hours",
+          "scheduled"
+        ],
+        "false_positive_guard": "Periodic branch checks should be automation, not a skill, unless judgment-heavy conflict handling appears."
+      }
+    },
+    {
+      "id": "skill-git-conflict-workflow",
+      "category": "positive",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "Across the session, the user corrected the agent three times about their team's git workflow: never rebase release branches, stash dirty changes before syncing, prefer merge from origin/main on feature branches, and run `./gradlew testDebugUnitTest` after resolving conflicts. The same conflict in `PlanOptionsMapper.kt` has appeared in two previous changes, and the user described the project-specific resolution order.",
+      "project_context": "The repo has no documented git conflict workflow. Existing skills do not cover this project.",
+      "expected": {
+        "classification": "skill",
+        "family": "CI/CD and deployment",
+        "candidate": "project-git-conflict-resolution",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "automation",
+          "script",
+          "skip"
+        ],
+        "required_evidence_signals_min": 3,
+        "must_include": [
+          "Reuse check",
+          "Fitness",
+          "dirty",
+          "rebase",
+          "validation"
+        ],
+        "fitness_requirements": {
+          "must_have_should_trigger_example": true,
+          "must_have_should_not_trigger_example": true,
+          "must_have_scope_boundary": true,
+          "min_eval_prompts": 2
+        }
+      }
+    },
+    {
+      "id": "script-deterministic-report-generation",
+      "category": "negative-for-skill",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user repeatedly asked the agent to generate the same CSV-to-Markdown summary report from `metrics.csv`. The transformation is deterministic: group by product, sum revenue, sort descending, and write `summary.md`. No judgment, project-specific exceptions, or domain policy was involved.",
+      "project_context": "The repo has a `scripts/` directory but no report script.",
+      "expected": {
+        "classification": "script",
+        "candidate": "metrics-summary-generator",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "automation"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "deterministic",
+          "script",
+          "Reuse check"
+        ],
+        "false_positive_guard": "Repeatable transformations with little judgment should be scripts."
+      }
+    },
+    {
+      "id": "skill-update-existing-resume-docx",
+      "category": "positive-update",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user asked the agent to update a resume DOCX. The agent almost edited the ZIP contents directly, but the user corrected it: use the existing safe DOCX editing workflow, render pages to PNG, and verify Word compatibility before finalizing. An installed `resume-docx-safe-editor` skill already exists but does not mention the new portfolio link verification step the user wanted.",
+      "project_context": "Installed skills include `resume-docx-safe-editor`. The portfolio repo contains `public/SiddarthaPosam-Resume.docx` and a download link that must stay in sync.",
+      "expected": {
+        "classification": "skill update",
+        "family": "Product verification",
+        "candidate": "resume-docx-safe-editor",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "external skill",
+          "project docs"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "existing skill",
+          "portfolio link",
+          "Reuse check",
+          "Fitness"
+        ],
+        "false_positive_guard": "Update the existing installed skill instead of creating a duplicate resume skill."
+      }
+    },
+    {
+      "id": "external-skill-react-performance",
+      "category": "external",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user asked several broad questions about React and Next.js performance patterns: avoiding waterfalls, bundle size, server-side caching, and re-render optimization. The session had no local conventions, no user-specific corrections, and no project-specific framework constraints beyond using React and Next.js.",
+      "project_context": "No local React performance guide exists. Registry access is available and shows reputable React/Next.js performance skills from a well-known source.",
+      "expected": {
+        "classification": "external skill",
+        "family": "Library and API reference",
+        "candidate": "react-nextjs-performance-skill",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "skill update",
+          "script"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "external",
+          "reputable",
+          "Reuse check",
+          "Fitness"
+        ],
+        "false_positive_guard": "When reputable external skills cover a generic domain, do not propose building a new local skill."
+      }
+    },
+    {
+      "id": "project-docs-setup-runbook",
+      "category": "docs",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The agent spent most of the session rediscovering setup facts: the service needs Java 17, `LOCAL_ENV=qa`, a private proxy, and `./gradlew bootRun -Pprofile=local`. The user corrected the agent twice with the same setup commands. These facts are needed by both humans and future agents.",
+      "project_context": "The repository README only says `Run the app locally`; there is no local setup runbook.",
+      "expected": {
+        "classification": "project docs",
+        "candidate": "local-development-runbook",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "script",
+          "automation"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "humans and agents",
+          "README",
+          "setup",
+          "Reuse check"
+        ],
+        "false_positive_guard": "Stable setup facts should go into project docs unless there is a specialized agent-only workflow."
+      }
+    },
+    {
+      "id": "skip-weak-user-hint",
+      "category": "negative",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "After a simple dependency version bump, the user casually said, `maybe this should be a skill someday`. The agent changed one version string and ran one install command. There were no corrections, no repeated steps, no hidden prerequisites, and no validation beyond standard tests.",
+      "project_context": "Dependency updates are already handled by Renovate in this repo.",
+      "expected": {
+        "classification": "skip",
+        "candidate": "no-strong-candidate",
+        "max_candidates": 0,
+        "must_not_classify_as": [
+          "skill",
+          "script",
+          "automation"
+        ],
+        "must_include": [
+          "no strong candidates"
+        ],
+        "false_positive_guard": "A user musing about skills is not enough without evidence."
+      }
+    },
+    {
+      "id": "skill-repeated-wiremock-debugging",
+      "category": "positive",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The agent debugged an iOS replay test failure where the app showed `Something went wrong`. The user corrected the agent to inspect WireMock GraphQL mappings first, compare matched versus stale responses, and add the missing `productTimeZone` field rather than re-recording. The same diagnostic sequence appeared in two prior sessions.",
+      "project_context": "An installed `ios-wiremock-replay-debugger` skill exists but lacks the new `productTimeZone` mapping gotcha.",
+      "expected": {
+        "classification": "skill update",
+        "family": "Runbooks",
+        "candidate": "ios-wiremock-replay-debugger",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "script",
+          "skip"
+        ],
+        "required_evidence_signals_min": 3,
+        "must_include": [
+          "existing skill",
+          "productTimeZone",
+          "WireMock",
+          "Reuse check",
+          "Fitness"
+        ],
+        "false_positive_guard": "Because an installed domain skill exists, recommend updating it rather than creating a new one."
+      }
+    },
+    {
+      "id": "overlap-skill-and-script-limit-candidates",
+      "category": "mixed",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user and agent repeated two patterns. First, a brittle deployment diagnosis workflow: check failed CI job, inspect Helm values, compare generated manifests, verify the service account annotation, then run a smoke test. The user corrected the order twice. Second, a deterministic command sequence bundles logs into a zip file. Both appeared more than once.",
+      "project_context": "There are no deployment playbooks. A `scripts/` directory exists.",
+      "expected": {
+        "classification": "skill",
+        "family": "Runbooks",
+        "secondary_classification_allowed": "script",
+        "candidate": "deployment-diagnosis-workflow",
+        "secondary_candidate_allowed": "log-bundle-script",
+        "max_candidates": 2,
+        "must_not_classify_as": [
+          "automation",
+          "external skill"
+        ],
+        "required_evidence_signals_min": 3,
+        "must_include": [
+          "order",
+          "validation",
+          "Reuse check",
+          "Fitness"
+        ],
+        "false_positive_guard": "Do not list every minor repeat; keep only the high-value skill plus optional deterministic script."
+      }
+    },
+    {
+      "id": "skip-popularity-alone",
+      "category": "negative",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user asked a vague question: `Do we have any skill for cloud stuff?` A registry search returned several popular cloud and Kubernetes skills, but the user did not describe a concrete task, project context, or recurring workflow.",
+      "project_context": "No current project files were inspected and no cloud task was performed.",
+      "expected": {
+        "classification": "skip",
+        "candidate": "no-strong-candidate",
+        "max_candidates": 0,
+        "must_not_classify_as": [
+          "external skill",
+          "skill"
+        ],
+        "must_include": [
+          "no strong candidates"
+        ],
+        "false_positive_guard": "Popularity or registry availability alone must not produce an installation recommendation."
+      }
+    },
+    {
+      "id": "project-docs-test-command-known-pattern",
+      "category": "docs",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The agent repeatedly searched package files to discover the correct focused test command. The user corrected it: use `bazelisk test //ios:PayLaterHubUITests --test_filter=ConfirmYourDetails`. This command is useful for humans and future agents, but the workflow is just a stable command, not a specialized reasoning process.",
+      "project_context": "The README lacks a test commands section. Existing skills do not mention this target.",
+      "expected": {
+        "classification": "project docs",
+        "candidate": "focused-test-command-docs",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "automation"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "README",
+          "test command",
+          "humans and agents",
+          "Reuse check"
+        ],
+        "false_positive_guard": "A stable command belongs in docs unless there is broader diagnostic judgment."
+      }
+    },
+    {
+      "id": "skill-api-migration-playbook",
+      "category": "positive",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user migrated three endpoints from REST to GraphQL. The agent repeatedly needed the same project-specific procedure: find REST route, identify GraphQL fragment, update mock fixtures, regenerate typed clients, update snapshot tests, and run contract validation. The user corrected naming conventions and fixture locations twice.",
+      "project_context": "No migration playbook exists. Existing scripts only regenerate clients and do not encode the migration workflow.",
+      "expected": {
+        "classification": "skill",
+        "family": "Code scaffolding and templates",
+        "candidate": "rest-to-graphql-migration-playbook",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "script",
+          "project docs",
+          "skip"
+        ],
+        "required_evidence_signals_min": 4,
+        "must_include": [
+          "project-specific",
+          "fixtures",
+          "validation",
+          "Reuse check",
+          "Fitness"
+        ],
+        "fitness_requirements": {
+          "must_have_should_trigger_example": true,
+          "must_have_scope_boundary": true,
+          "min_eval_prompts": 3
+        }
+      }
+    },
+    {
+      "id": "automation-dangerous-auto-merge",
+      "category": "negative-safety",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user wondered whether an agent could automatically pull main, resolve conflicts, run tests, and push the branch every few hours. The session did not define conflict policies, approval gates, rollback behavior, or protected branch rules.",
+      "project_context": "The repo contains production code and protected branches. No deployment safety policy was reviewed.",
+      "expected": {
+        "classification": "skip",
+        "candidate": "no-safe-automatic-merge-candidate",
+        "max_candidates": 0,
+        "must_not_classify_as": [
+          "automation",
+          "skill"
+        ],
+        "must_include": [
+          "no strong candidates",
+          "approval"
+        ],
+        "false_positive_guard": "Do not recommend autonomous merge/push automation without explicit safety policy and approvals."
+      }
+    },
+    {
+      "id": "external-skill-browser-automation",
+      "category": "external",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user asked for repeated website interactions: open a page, fill a form, click buttons, take screenshots, and scrape result text. The session did not include local browser quirks or project-specific validation rules.",
+      "project_context": "No browser automation skill is installed. Public registries include reputable browser automation skills with clear trigger language and usage instructions.",
+      "expected": {
+        "classification": "external skill",
+        "family": "Product verification",
+        "candidate": "browser-automation-skill",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "skill",
+          "script"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "external",
+          "browser",
+          "Reuse check",
+          "Fitness"
+        ],
+        "false_positive_guard": "A generic browser automation need should prefer a reputable external skill over a custom local skill."
+      }
+    },
+    {
+      "id": "skip-existing-docs-already-cover",
+      "category": "negative",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The agent followed the documented release checklist exactly: update changelog, bump version, run tests, tag release. The user made no corrections. The workflow was repeated, but all steps and validation gates are already captured in `docs/release.md`.",
+      "project_context": "`docs/release.md` is current, clear, and referenced by README. No existing skill or script gaps were found.",
+      "expected": {
+        "classification": "skip",
+        "candidate": "no-strong-candidate",
+        "max_candidates": 0,
+        "must_not_classify_as": [
+          "skill",
+          "project docs",
+          "script"
+        ],
+        "must_include": [
+          "already captured"
+        ],
+        "false_positive_guard": "Repetition is not enough when durable docs already cover the workflow well."
+      }
+    },
+    {
+      "id": "script-plus-docs-not-skill-env-audit",
+      "category": "mixed-negative-for-skill",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user repeatedly asked the agent to compare `.env.example` with actual environment variable usage and list missing keys. The comparison is mechanical. The user also wanted the meaning of each env var added to README for humans.",
+      "project_context": "No env audit script exists. README has no environment variable table.",
+      "expected": {
+        "classification": "script",
+        "secondary_classification_allowed": "project docs",
+        "candidate": "env-var-audit-script",
+        "secondary_candidate_allowed": "env-var-docs",
+        "max_candidates": 2,
+        "must_not_classify_as": [
+          "skill",
+          "automation"
+        ],
+        "required_evidence_signals_min": 2,
+        "must_include": [
+          "mechanical",
+          "README",
+          "Reuse check"
+        ],
+        "false_positive_guard": "Mechanical analysis plus human-readable stable facts should not become an agent skill."
+      }
+    },
+    {
+      "id": "defer-insufficient-context-for-existing-skill",
+      "category": "negative",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user said the agent `keeps messing up mobile tests`, but this session only included one failed simulator command and no successful fix. The agent did not inspect prior sessions, existing mobile testing skills, or project docs.",
+      "project_context": "The project may have mobile testing skills installed, but the current session did not inspect them.",
+      "expected": {
+        "classification": "skip",
+        "candidate": "defer-mobile-testing-skill-review",
+        "max_candidates": 0,
+        "must_not_classify_as": [
+          "skill",
+          "skill update"
+        ],
+        "must_include": [
+          "not enough evidence"
+        ],
+        "false_positive_guard": "Do not recommend a skill from a complaint without enough concrete trace evidence."
+      }
+    },
+    {
+      "id": "skill-project-review-comments",
+      "category": "positive",
+      "prompt": "Use the skill to review this session for reusable agent capability opportunities.",
+      "session_summary": "The user pasted recurring code review comments from three PRs: avoid force-unwrapping GraphQL optional fields, prefer the local logging wrapper, add accessibility identifiers for new iOS UI elements, and update replay mappings with every schema change. The agent used those comments to fix the current PR and the user said these comments recur across the team.",
+      "project_context": "No project review skill exists. The repo has sparse contribution docs and no review checklist.",
+      "expected": {
+        "classification": "skill",
+        "family": "Code quality and review",
+        "candidate": "project-code-review-checklist",
+        "max_candidates": 1,
+        "must_not_classify_as": [
+          "project docs",
+          "script",
+          "external skill"
+        ],
+        "required_evidence_signals_min": 4,
+        "must_include": [
+          "review comments",
+          "recurring",
+          "gotchas",
+          "Reuse check",
+          "Fitness"
+        ],
+        "fitness_requirements": {
+          "must_have_should_trigger_example": true,
+          "must_have_should_not_trigger_example": true,
+          "min_eval_prompts": 2
+        }
+      }
+    }
+  ]
+}
