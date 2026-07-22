@@ -21,6 +21,7 @@ The skill helps an agent:
 - Prefer reuse before creation by checking installed skills, project docs, scripts, and public registries when available.
 - Avoid noisy false positives during passive end-of-session wrap-up.
 - Propose concrete fitness checks and eval prompts before recommending a new or updated skill.
+- Preserve the evidence used to create or update a skill in a portable provenance manifest.
 
 ## Trigger Policy
 
@@ -66,8 +67,24 @@ Token usage, elapsed time, and tool count are supporting signals only. They must
 ├── evals/
 │   └── evals.json
 └── references/
+    ├── provenance.yaml
     └── skill-families.md
 ```
+
+## Source Provenance
+
+The source panel shown by an agent host is conversation metadata and may disappear when a skill is copied, published, or installed elsewhere. This repo therefore keeps durable source attribution in [`references/provenance.yaml`](references/provenance.yaml).
+
+The manifest records:
+
+- A stable source ID, type, title, locator, date, and visibility.
+- The concrete contribution made by each source.
+- The skill sections, evals, or resources affected by that source.
+- Append-only revision entries connecting each update to its source IDs.
+
+For private sessions or project artifacts, store a sanitized evidence summary instead of raw transcripts, credentials, private URLs, or personal data. For third-party pages, preserve citation metadata and distilled contributions unless redistribution is explicitly permitted. Git commits supplement this manifest but do not replace it because uploaded skill archives may omit `.git` history.
+
+Normal skill execution does not need to load the provenance manifest. Read and update it only when creating, auditing, or changing the skill.
 
 ## Evaluation
 
@@ -77,6 +94,7 @@ The eval set in [`evals/evals.json`](evals/evals.json) focuses on false-positive
 - High-token or high-tool sessions with no reuse signal.
 - Explicit reviews with no candidates.
 - Skill creation, skill updates, external skills, scripts, automations, project docs, and skip decisions.
+- Portable source capture, private-source sanitization, revision linkage, and missing-source handling.
 
 Validate the eval JSON with:
 
@@ -161,7 +179,7 @@ For other agents that support the Agent Skills pattern:
 1. Copy or clone this repo into the agent's skill directory.
 2. Preserve the folder name `identify-skill-opportunities` when command names are directory-based.
 3. Ensure the agent can read `SKILL.md`.
-4. Preserve `references/skill-families.md` and `evals/evals.json`; they are optional at runtime but useful for classification and maintenance.
+4. Preserve `references/skill-families.md`, `references/provenance.yaml`, and `evals/evals.json`; they are optional at runtime but useful for classification and maintenance.
 5. Add a host-specific passive wrap-up instruction only if the agent supports background or end-of-session behavior.
 
 If the platform does not support implicit skill invocation, use the skill manually by asking the agent to review the current session for reusable skill, script, automation, external-skill, or documentation opportunities.
@@ -171,5 +189,6 @@ If the platform does not support implicit skill invocation, use the skill manual
 - Keep `SKILL.md` concise and operational.
 - Put longer taxonomies or references under `references/`.
 - Add eval cases for every trigger policy change.
+- Update `references/provenance.yaml` for every substantive skill change and map the revision to stable source IDs.
 - Prefer stricter passive gating over noisy recommendations.
 - Do not let popularity alone justify recommending an external skill.
