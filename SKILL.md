@@ -1,6 +1,8 @@
 ---
 name: identify-skill-opportunities
 description: Review an agent session and project context to identify high-value opportunities to create, update, install, or skip reusable agent skills. Use when the user explicitly asks whether work should become a skill, or during passive wrap-up only after a significant project session with a clear reuse signal such as repeated workflow, user correction, project-specific rediscovery, fragile ordering, hidden prerequisites, validation gates, or recurring failure patterns.
+metadata:
+  provenance-file: references/provenance.yaml
 ---
 
 # Identify Skill Opportunities
@@ -176,6 +178,21 @@ When the next step is to create or update a skill, follow the host platform's sk
 When referencing external skill-writing best practices, preserve these principles: start from real expertise, refine through real execution, spend context sparingly, provide defaults instead of broad menus, favor procedures over declarations, and include validation loops for fragile workflows.
 
 When the host supports persistent skill data, keep a small append-only decision log for accepted, rejected, and deferred recommendations. Use it to reduce repeated false positives and notice undertriggering, but do not let historical preference override current evidence.
+
+## Source Provenance
+
+When creating, auditing, or updating a skill, read its provenance manifest if one exists. For this skill, use `references/provenance.yaml`. Normal runtime use does not need to load the manifest.
+
+For every substantive skill creation or update:
+
+1. Create or update `references/provenance.yaml` inside the portable skill directory.
+2. Give each source a stable ID and record its type, title, durable locator when available, retrieval or occurrence date, visibility, concrete contribution, and affected skill sections or artifacts.
+3. Append a revision entry that names the source IDs and the behavior, instructions, evals, or resources changed. Add a Git commit SHA when one is available, but do not rely on Git history as the only provenance record.
+4. Preserve a sanitized evidence summary for session, ticket, project-history, or private-document sources. A host session ID, source sidebar, or private URL alone is not portable evidence.
+5. Store only citation metadata and distilled contributions for third-party material unless redistribution is permitted. Never copy credentials, private URLs, personal data, or raw confidential transcripts into a public skill.
+6. Do not invent missing source details. Mark unavailable fields explicitly or ask for the missing artifact when exact attribution matters.
+
+A URL without the source's concrete contribution and affected skill area is insufficient. Keep provenance maintenance-only so it does not add context cost to ordinary skill execution.
 
 ## Evaluation
 
