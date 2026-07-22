@@ -1,6 +1,6 @@
 {
   "skill_name": "identify-skill-opportunities",
-  "version": 1,
+  "version": 2,
   "purpose": "Evaluate whether the skill identifies high-value reusable agent skill opportunities while avoiding noisy false positives.",
   "global_assertions": {
     "max_default_candidates": 2,
@@ -15,7 +15,13 @@
     "explicit_mode_may_report_no_strong_candidates": true,
     "must_not_recommend_skill_from_single_weak_signal": true,
     "must_not_recommend_new_local_skill_when_script_automation_docs_or_existing_skill_fits_better": true,
-    "must_not_recommend_external_skill_based_on_popularity_alone": true
+    "must_not_recommend_external_skill_based_on_popularity_alone": true,
+    "skill_creation_or_update_must_preserve_portable_provenance": true,
+    "source_url_alone_is_insufficient_without_contribution_and_affected_artifacts": true,
+    "must_not_rely_on_host_source_sidebar_or_git_history_as_only_provenance": true,
+    "must_not_fabricate_missing_source_metadata": true,
+    "private_source_details_must_be_sanitized": true,
+    "normal_runtime_must_not_load_provenance_unless_auditing_or_updating": true
   },
   "classification_labels": [
     "skill",
@@ -638,6 +644,96 @@
           "must_have_should_not_trigger_example": true,
           "min_eval_prompts": 2
         }
+      }
+    },
+    {
+      "id": "provenance-create-from-public-and-project-sources",
+      "category": "provenance-positive",
+      "prompt": "The user approved creating the recommended deployment diagnosis skill. Preserve the sources used to create it so the skill remains auditable after upload to another agent platform.",
+      "session_summary": "The skill is based on an official deployment API guide, two repository incident reports, and a completed troubleshooting session. The host currently displays the web guide in a source sidebar.",
+      "project_context": "The new skill directory can contain a references folder. The incident reports are internal and cannot be redistributed verbatim.",
+      "expected": {
+        "classification": "skill",
+        "provenance_action": "create-or-update-references/provenance.yaml",
+        "must_include": [
+          "stable source ID",
+          "contribution",
+          "affected",
+          "revision",
+          "sanitized"
+        ],
+        "must_not_include": [
+          "rely on the source sidebar",
+          "copy the complete internal incident reports"
+        ],
+        "false_positive_guard": "Persist source metadata and distilled contributions inside the skill; do not treat host UI metadata or copied confidential documents as portable provenance."
+      }
+    },
+    {
+      "id": "provenance-update-private-session-sanitized",
+      "category": "provenance-privacy",
+      "prompt": "The user approved updating an existing test-debugging skill from this session. Record why the new replay validation step was added.",
+      "session_summary": "The session contains a private ticket URL, an authentication token printed by a failed command, customer identifiers, and the reusable finding that replay mappings must be verified before changing production code.",
+      "project_context": "The skill will be published publicly. Its existing provenance manifest supports session-summary sources and revision entries.",
+      "expected": {
+        "classification": "skill update",
+        "provenance_action": "append-sanitized-source-and-revision",
+        "must_include": [
+          "session-summary",
+          "replay mappings",
+          "source ID",
+          "revision"
+        ],
+        "must_not_include": [
+          "authentication token",
+          "customer identifiers",
+          "private ticket URL",
+          "raw transcript"
+        ],
+        "false_positive_guard": "Capture the reusable evidence without leaking private session content into a public skill."
+      }
+    },
+    {
+      "id": "provenance-url-only-is-insufficient",
+      "category": "provenance-quality",
+      "prompt": "Add this public documentation page as a source for a skill update: https://example.com/tool-guide",
+      "session_summary": "The page title and URL are known, but nobody has identified which instruction changed or what information from the page supports it.",
+      "project_context": "The existing provenance manifest requires a contribution and affected artifacts for every source.",
+      "expected": {
+        "classification": "skip",
+        "provenance_action": "do-not-add-incomplete-source",
+        "must_include": [
+          "contribution",
+          "affected",
+          "insufficient"
+        ],
+        "must_not_include": [
+          "invented contribution",
+          "invented section mapping"
+        ],
+        "false_positive_guard": "A URL is discovery metadata, not evidence of a skill change, until its concrete contribution and affected artifact are known."
+      }
+    },
+    {
+      "id": "provenance-missing-sidebar-details-no-fabrication",
+      "category": "provenance-negative",
+      "prompt": "Backfill the sources from the agent's right-side source panel into this uploaded skill.",
+      "session_summary": "The uploaded archive contains no source manifest, the original host session is unavailable, and only a statement that there used to be three sources remains. Their titles, URLs, contents, and contributions are unknown.",
+      "project_context": "Git history contains the skill changes but no source citations or commit trailers.",
+      "expected": {
+        "classification": "skip",
+        "provenance_action": "report-unavailable-without-fabrication",
+        "must_include": [
+          "source details are unavailable",
+          "do not invent",
+          "Git history is insufficient"
+        ],
+        "must_not_include": [
+          "guessed URL",
+          "guessed title",
+          "guessed source contribution"
+        ],
+        "false_positive_guard": "Unknown provenance must remain explicitly unknown; plausible reconstruction is not attribution."
       }
     }
   ]
