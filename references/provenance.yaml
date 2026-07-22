@@ -1,0 +1,213 @@
+schema_version: 1
+
+skill:
+  name: identify-skill-opportunities
+  manifest_role: maintenance-only
+
+policy:
+  require_source_contribution: true
+  require_affected_artifacts: true
+  require_revision_source_ids: true
+  allow_url_only_source: false
+  rely_on_host_source_sidebar: false
+  rely_on_git_history_only: false
+  bundle_third_party_content: only-when-redistribution-is-permitted
+  private_source_handling: sanitized-summary
+
+sources:
+  - id: agentskills-best-practices
+    type: web
+    title: Best practices for skill creators
+    uri: https://agentskills.io/skill-creation/best-practices
+    first_retrieved_at: 2026-06-11
+    verified_at: 2026-07-14
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Ground skills in completed tasks, corrections, project artifacts, execution traces, and real failure cases.
+      - Keep instructions concise, coherent, procedural, and validated through real execution.
+    applies_to:
+      - SKILL.md#review-workflow
+      - SKILL.md#quality-bar
+      - SKILL.md#creation-guidance
+
+  - id: agentskills-specification
+    type: web
+    title: Agent Skills specification
+    uri: https://agentskills.io/specification
+    first_retrieved_at: 2026-06-23
+    verified_at: 2026-07-14
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Use a portable skill directory with optional references and arbitrary string metadata.
+      - Keep detailed maintenance material outside the core runtime instructions and reference it by relative path.
+    applies_to:
+      - SKILL.md#source-provenance
+      - references/provenance.yaml
+      - README.md#source-provenance
+
+  - id: claude-code-skills-lessons
+    type: web
+    title: Lessons from building Claude Code - How we use skills
+    uri: https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills
+    retrieved_at: 2026-06-23
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Treat skill descriptions as discovery metadata and keep the loaded instructions focused.
+      - Improve skills from real usage and observed agent behavior.
+    applies_to:
+      - SKILL.md#trigger-modes
+      - SKILL.md#creation-guidance
+
+  - id: claude-code-skills-docs
+    type: web
+    title: Extend Claude with skills
+    uri: https://code.claude.com/docs/en/skills
+    retrieved_at: 2026-06-23
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Document personal and project skill locations, explicit invocation, and description-based discovery in Claude Code.
+    applies_to:
+      - README.md#claude-code
+
+  - id: alphago-zero-nature
+    type: research-paper
+    title: Mastering the game of Go without human knowledge
+    uri: https://www.nature.com/articles/nature24270
+    retrieved_at: 2026-06-23
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Support the motivating analogy that systems can improve from generated experience rather than relying only on expert demonstrations.
+    applies_to:
+      - README.md#why-this-exists
+
+  - id: alphazero-arxiv
+    type: research-paper
+    title: Mastering Chess and Shogi by Self-Play with a General Reinforcement Learning Algorithm
+    uri: https://arxiv.org/abs/1712.01815
+    retrieved_at: 2026-06-23
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Support the motivating analogy that self-play learning generalized across multiple game domains.
+    applies_to:
+      - README.md#why-this-exists
+
+  - id: w3c-prov-o
+    type: web
+    title: PROV-O - The PROV Ontology
+    uri: https://www.w3.org/TR/prov-o/
+    retrieved_at: 2026-07-14
+    visibility: public
+    redistribution: citation-only
+    contribution:
+      - Model provenance as sources used by update activities to derive revised artifacts.
+      - Keep derivation and revision relationships explicit without requiring the full ontology.
+    applies_to:
+      - SKILL.md#source-provenance
+      - references/provenance.yaml
+
+  - id: initial-design-session-2026-06-11
+    type: session-summary
+    title: Initial skill-opportunity design session
+    occurred_at: 2026-06-11
+    visibility: private-summary
+    transcript_bundled: false
+    contribution:
+      - Identified the need for an agent to detect reusable capabilities from project work and conversation history.
+      - Established that humans approve changes while the agent performs first-pass opportunity detection.
+      - Distinguished judgment-heavy skills from deterministic scripts and scheduled automations.
+    applies_to:
+      - SKILL.md#portability
+      - SKILL.md#review-workflow
+      - SKILL.md#classification-rules
+      - README.md#why-this-exists
+
+  - id: passive-trigger-tuning-session-2026-06-23
+    type: session-summary
+    title: Passive trigger and false-positive tuning session
+    occurred_at: 2026-06-23
+    visibility: private-summary
+    transcript_bundled: false
+    contribution:
+      - Required project substance and reuse evidence before passive review.
+      - Added magnitude signals as supporting evidence rather than standalone triggers.
+      - Required silent output when passive review finds no high-confidence recommendation.
+    applies_to:
+      - SKILL.md#significance-gate
+      - SKILL.md#magnitude-signals
+      - SKILL.md#trigger-modes
+      - evals/evals.json
+
+  - id: repository-eval-corpus-v1
+    type: repository-artifact
+    title: Skill-opportunity evaluation corpus
+    path: evals/evals.json
+    visibility: bundled
+    contribution:
+      - Encodes positive, negative, classification, safety, and false-positive cases used to tune the skill.
+    applies_to:
+      - SKILL.md#evaluation
+      - evals/evals.json
+
+revisions:
+  - id: initial-skill-2026-06-11
+    date: 2026-06-11
+    action: created
+    source_ids:
+      - initial-design-session-2026-06-11
+      - agentskills-best-practices
+    changes:
+      - Created the agent-agnostic review and classification workflow.
+      - Added reuse checks, candidate fitness checks, and the initial eval corpus.
+    git_commit: 3f4065b5667b519ab146e95fa42df2f890c2cecf
+
+  - id: passive-trigger-gate-2026-06-23
+    date: 2026-06-23
+    action: updated
+    source_ids:
+      - passive-trigger-tuning-session-2026-06-23
+      - claude-code-skills-lessons
+      - repository-eval-corpus-v1
+    changes:
+      - Tightened passive triggering with substance, reuse, high-weight, and magnitude checks.
+      - Added silent suppression and false-positive eval cases.
+    git_commit: 555709e0f40dfc32e5e96aefe5520ae686410943
+
+  - id: usage-readme-2026-06-23
+    date: 2026-06-23
+    action: updated
+    source_ids:
+      - agentskills-specification
+      - claude-code-skills-docs
+    changes:
+      - Added installation and invocation guidance for Codex, Claude Code, and other Agent Skills-compatible hosts.
+    git_commit: 311c47e0b3ec182b562f280e93a631d9e033e667
+
+  - id: motivation-readme-2026-06-23
+    date: 2026-06-23
+    action: updated
+    source_ids:
+      - initial-design-session-2026-06-11
+      - alphago-zero-nature
+      - alphazero-arxiv
+    changes:
+      - Added the self-improvement motivation and clarified that humans retain approval over skill changes.
+    git_commit: 776dd87fbb0ca01b87864efb0de60a2f926cba47
+
+  - id: portable-provenance-2026-07-14
+    date: 2026-07-14
+    action: updated
+    source_ids:
+      - agentskills-specification
+      - agentskills-best-practices
+      - w3c-prov-o
+      - repository-eval-corpus-v1
+    changes:
+      - Added a portable source manifest and maintenance workflow.
+      - Added privacy, traceability, and no-fabrication provenance requirements.
+      - Added provenance-focused eval cases and contributor documentation.
